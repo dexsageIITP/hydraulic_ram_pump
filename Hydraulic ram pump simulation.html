@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Hydraulic ram pump simulation</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#edf2ef;--card:#fbfdfc;--ink:#14262b;--mute:#5d7279;--line:#cbd8d4;--water:#3d8fb8;--pipe:#6c7f86;--steel:#8fa0a6;--ground:#d4cdbb;--accent:#d6453d;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);color-scheme:light}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0e1a1e;--card:#15262b;--ink:#e6f0ed;--mute:#8fa8ae;--line:#26404a;--water:#4aa6d0;--pipe:#5c7078;--steel:#6d8189;--ground:#2a3a36;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#0e1a1e;--card:#15262b;--ink:#e6f0ed;--mute:#8fa8ae;--line:#26404a;--water:#4aa6d0;--pipe:#5c7078;--steel:#6d8189;--ground:#2a3a36;color-scheme:dark}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink);font-family:"Instrument Sans",system-ui,-apple-system,"Segoe UI",sans-serif}
+body{padding:12px 12px 28px;max-width:980px;margin:0 auto;line-height:1.4}
+h1{font-size:1.35rem;margin:6px 0 2px}
+h2{font-size:1rem;margin:0 0 6px}
+p.sub{margin:0 0 10px;color:var(--mute);font-size:.88rem}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px;margin-bottom:12px}
+canvas{width:100%;display:block}
+#sch{aspect-ratio:800/520}
+.ch{height:170px}
+.chips{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:12px}
+@media(min-width:700px){.chips{grid-template-columns:repeat(6,1fr)}}
+.chip{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:6px 8px}
+.chip b{display:block;font-size:1.05rem;font-variant-numeric:tabular-nums}
+.chip span{font-size:.72rem;color:var(--mute)}
+.ctl{display:grid;gap:8px;grid-template-columns:1fr}
+@media(min-width:700px){.ctl{grid-template-columns:1fr 1fr}}
+label{display:flex;justify-content:space-between;font-size:.84rem;color:var(--mute)}
+label output{color:var(--ink);font-weight:600}
+input[type=range]{width:100%;accent-color:var(--water)}
+.btns{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+button{font:inherit;font-size:.85rem;border:1px solid var(--line);background:var(--bg);color:var(--ink);border-radius:8px;padding:8px 12px;min-height:40px;cursor:pointer}
+button.on{background:var(--water);color:#fff;border-color:var(--water)}
+.leg{display:flex;flex-wrap:wrap;gap:4px 12px;font-size:.76rem;color:var(--mute);margin-top:6px}
+.leg i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:4px}
+.row{display:grid;grid-template-columns:150px 1fr 48px;gap:8px;align-items:center;font-size:.78rem;margin:5px 0}
+.row div.bar{height:12px;border-radius:6px;background:var(--bg);overflow:hidden}
+.row div.bar i{display:block;height:100%;width:0}
+.row em{font-style:normal;text-align:right;font-variant-numeric:tabular-nums}
+@media(max-width:520px){.row{grid-template-columns:96px 1fr 44px}}
+.note{font-size:.76rem;color:var(--mute);margin-top:6px}
+</style>
+</head>
+<body>
+<h1>Hydraulic ram pump</h1>
+<p class="sub">Live physics: drive-pipe inertia, water hammer, flap valves, air chamber and where every joule goes.</p>
+
+<div class="card"><canvas id="sch"></canvas></div>
+
+<div class="chips">
+<div class="chip"><b id="cV">0</b><span>drive flow m/s</span></div>
+<div class="chip"><b id="cP">0</b><span>body head m (peak)</span></div>
+<div class="chip"><b id="cS">0</b><span>strokes/min</span></div>
+<div class="chip"><b id="cD">0</b><span>delivered L/min</span></div>
+<div class="chip"><b id="cW">0</b><span>wasted L/min</span></div>
+<div class="chip"><b id="cE">0%</b><span>efficiency</span></div>
+</div>
+
+<div class="card">
+<div class="ctl">
+<div><label>Supply head H <output id="oH"></output></label><input id="iH" type="range" min="1" max="6" step="0.1" value="3"></div>
+<div><label>Waste flap trip speed <output id="oT"></output></label><input id="iT" type="range" min="0.8" max="2.2" step="0.05" value="1.5"></div>
+<div><label>Delivery lift Z <output id="oZ"></output></label><input id="iZ" type="range" min="5" max="30" step="1" value="12"></div>
+<div><label>Air chamber gas volume <output id="oA"></output></label><input id="iA" type="range" min="0.3" max="2.4" step="0.1" value="1.5"></div>
+</div>
+<div class="btns">
+<button id="bP">Pause</button><button id="bR">Reset</button>
+<button class="sp" data-s="0.05">0.05× slow-mo</button><button class="sp on" data-s="0.2">0.2×</button><button class="sp" data-s="1">1× real time</button>
+</div>
+<div class="note">Lift and air-chamber sliders restart the pump. Shaded bands in the graphs mark when the waste flap is shut.</div>
+</div>
+
+<div class="card"><h2>Pressure in the pump body</h2><canvas class="ch" id="c1"></canvas>
+<div class="note">Square-root scale so the hammer spike and the delivery pressure both stay readable.</div></div>
+<div class="card"><h2>Drive-pipe velocity</h2><canvas class="ch" id="c2"></canvas></div>
+<div class="card"><h2>Energy: cumulative, from the supply to the outcomes</h2><canvas class="ch" id="c3" style="height:220px"></canvas><div class="leg" id="leg"></div></div>
+<div class="card"><h2>Share of input energy</h2><div id="bars"></div>
+<div class="note">Efficiency is useful lift energy divided by energy drawn from the supply tank. Real ram pumps typically land between 30 and 70 percent depending on tuning.</div></div>
+
+<script>
+const g=9.81,RG=9810,A=5e-4,L=10,Ap=1.27e-4,Ld=30,VT=0.003,C=1.4e-8,KF=0.6,KFD=3.6,EPS=0.02,PMIN=-1,TC=0.015,TO=0.04,DT=1e-4,WIN=2.5;
+const S2G=Math.sqrt(2*g),KW=0.9*A*S2G,KD=0.6*A*S2G;
+const P={H:3,Z:12,vt:1.5,Va0:1.5e-3};
+const CATS=[["use","Useful lift to tank","#2e9d5b"],["waste","Dumped out of waste valve","#d6453d"],["df","Drive-pipe friction","#e68a2e"],["dv","Delivery-valve throttling","#e0c13a"],["dp","Delivery-pipe friction","#a68a64"],["res","Ringing and cavitation","#8a8f98"],["sto","Still stored (motion, squeeze, air)","#3b7dd8"]];
+let s,E,H,EH,estep,run=true,speed=0.2;
+
+function reset(){
+ s={t:0,v:0,p:0,a:0,mode:"open",tc:0,vd:0,Va:P.Va0,ha:P.Z,Qw:0,Qd:0,dOpen:0,ph1:0,ph2:0,ph3:0,strokes:0,Vout:0,Vw:0,pk:-1,acc:0,acc2:0};
+ E={in:0,df:0,waste:0,dv:0,use:0,dp:0,air:0};
+ H={t:[],pk:[],ha:[],v:[],a:[]};EH={t:[],d:[]};estep=0.01;
+}
+function G(pp,p0,ha,Qin,of,dt){
+ const x=Math.max(pp,0),y=pp-ha;
+ return C/dt*(pp-p0)+(y>0?KD*y/Math.sqrt(y+EPS):0)+KW*of*x/Math.sqrt(x+EPS)-Qin;
+}
+function vals(){
+ const sto=0.5*1000*A*L*s.v*s.v+0.5*RG*C*s.p*s.p+E.air+0.5*1000*Ap*Ld*s.vd*s.vd;
+ const res=E.in-(E.use+E.waste+E.df+E.dv+E.dp+sto);
+ return [E.use,E.waste,E.df,E.dv,E.dp,Math.max(res,0),Math.max(sto,0),E.in];
+}
+function step(){
+ const dt=DT;
+ const hf=KF*s.v*Math.abs(s.v);
+ s.v+=dt*g*(P.H-s.p-hf)/L;
+ if(s.mode==="open"&&s.v>P.vt)s.mode="closing";
+ if(s.mode==="closing"){s.a+=dt/TC;if(s.a>=1){s.a=1;s.mode="closed";s.tc=0;s.strokes++}}
+ else if(s.mode==="closed"){s.tc+=dt;if(s.tc>0.03&&s.p<0.5)s.mode="opening"}
+ else if(s.mode==="opening"){s.a-=dt/TO;if(s.a<=0){s.a=0;s.mode="open"}}
+ const Qin=A*s.v,of=1-s.a;
+ let lo=PMIN,hi=5000,pp;
+ if(G(lo,s.p,s.ha,Qin,of,dt)>=0)pp=lo;
+ else{for(let i=0;i<46;i++){const m=(lo+hi)/2;if(G(m,s.p,s.ha,Qin,of,dt)>0)hi=m;else lo=m}pp=(lo+hi)/2}
+ const x=Math.max(pp,0),y=pp-s.ha;
+ const Qw=KW*of*x/Math.sqrt(x+EPS),Qd=y>0?KD*y/Math.sqrt(y+EPS):0;
+ s.p=pp;s.Qw=Qw;s.Qd=Qd;
+ s.vd+=dt*g*(s.ha-P.Z-KFD*s.vd*Math.abs(s.vd))/Ld;if(s.vd<0)s.vd=0;
+ const Qo=Ap*s.vd;
+ s.Va=Math.min(VT,Math.max(3e-4,s.Va-(Qd-Qo)*dt));
+ s.ha=(10.33+P.Z)*Math.pow(P.Va0/s.Va,1.2)-10.33;
+ E.in+=RG*P.H*Qin*dt;E.df+=RG*hf*Qin*dt;E.waste+=RG*pp*Qw*dt;E.dv+=RG*y*Math.max(Qd,0)*dt;
+ E.use+=RG*P.Z*Qo*dt;E.dp+=RG*KFD*s.vd*s.vd*Qo*dt;E.air+=RG*s.ha*(Qd-Qo)*dt;
+ s.Vout+=Qo*dt;s.Vw+=Qw*dt;
+ s.dOpen+=(Math.min(1,Qd/3e-4)-s.dOpen)*Math.min(1,dt/0.006);
+ s.t+=dt;s.acc+=dt;s.acc2+=dt;if(pp>s.pk)s.pk=pp;
+ if(s.acc>=0.002){H.t.push(s.t);H.pk.push(s.pk);H.ha.push(s.ha);H.v.push(s.v);H.a.push(s.a);s.pk=-1;s.acc=0;if(H.t.length>WIN/0.002+4)for(const k in H)H[k].shift()}
+ if(s.acc2>=estep){EH.t.push(s.t);EH.d.push(vals());s.acc2=0;
+  if(EH.t.length>900){EH.t=EH.t.filter((_,i)=>i%2==0);EH.d=EH.d.filter((_,i)=>i%2==0);estep*=2}}
+}
+
+/* ---------- drawing ---------- */
+const $=id=>document.getElementById(id);
+const cvs={};let col={};
+function setup(id){const c=$(id),r=c.getBoundingClientRect(),d=window.devicePixelRatio||1;c.width=Math.round(r.width*d);c.height=Math.round(r.height*d);const x=c.getContext("2d");x.setTransform(d,0,0,d,0,0);cvs[id]={x,w:r.width,h:r.height}}
+function readCol(){const cs=getComputedStyle(document.documentElement);["bg","card","ink","mute","line","water","pipe","steel","ground","accent"].forEach(k=>col[k]=cs.getPropertyValue("--"+k).trim())}
+function pathLen(pts){let l=0;for(let i=1;i<pts.length;i++)l+=Math.hypot(pts[i][0]-pts[i-1][0],pts[i][1]-pts[i-1][1]);return l}
+function pipe(x,pts,phase,flow){
+ x.lineJoin="round";x.lineCap="butt";
+ x.beginPath();pts.forEach((p,i)=>i?x.lineTo(p[0],p[1]):x.moveTo(p[0],p[1]));
+ x.strokeStyle=col.pipe;x.lineWidth=22;x.stroke();
+ x.strokeStyle=col.water;x.lineWidth=14;x.stroke();
+ if(Math.abs(flow)>0.01){x.setLineDash([4,14]);x.lineDashOffset=-phase;x.strokeStyle="rgba(255,255,255,.75)";x.lineWidth=4;x.stroke();x.setLineDash([])}
+}
+function txt(x,t,px,py,c,sz,al){x.fillStyle=c||col.mute;x.font=(sz||13)+"px 'Instrument Sans',system-ui,sans-serif";x.textAlign=al||"left";x.fillText(t,px,py)}
+function drawSch(){
+ const {x,w}=cvs.sch,k=w/800;x.save();x.clearRect(0,0,w,w*0.65);x.scale(k,k);
+ x.fillStyle=col.ground;x.fillRect(0,440,800,80);x.beginPath();x.moveTo(0,120);x.lineTo(200,120);x.lineTo(260,440);x.lineTo(0,440);x.fill();
+ /* tanks */
+ x.fillStyle=col.card;x.strokeStyle=col.pipe;x.lineWidth=3;x.fillRect(30,40,150,80);x.fillStyle=col.water;x.fillRect(33,58,144,59);x.strokeRect(30,40,150,80);
+ x.fillStyle=col.card;x.fillRect(630,30,150,62);x.fillStyle=col.water;x.fillRect(633,52,144,37);x.strokeRect(630,30,150,62);
+ /* pipes */
+ pipe(x,[[105,118],[105,380],[335,380]],s.ph1,s.v);
+ pipe(x,[[528,258],[700,258],[700,70]],s.ph2,s.vd);
+ /* body */
+ x.fillStyle=col.steel;x.beginPath();x.roundRect(335,350,150,62,10);x.fill();
+ x.fillStyle=col.water;x.fillRect(343,358,134,46);
+ const glow=Math.min(0.75,Math.sqrt(Math.max(s.p,0))/14);x.fillStyle="rgba(214,69,61,"+glow+")";x.fillRect(343,358,134,46);
+ /* air chamber */
+ const wf=1-s.Va/VT,wy=346-wf*232;
+ x.fillStyle=col.card;x.fillRect(415,114,115,232);
+ const gp=Math.min(.55,s.ha/60);x.fillStyle="rgba(120,170,210,"+(0.12+gp)+")";x.fillRect(418,114,109,wy-114);
+ x.fillStyle=col.water;x.fillRect(418,wy,109,346-wy);
+ x.strokeStyle=col.pipe;x.lineWidth=5;x.strokeRect(415,114,115,232);
+ x.fillStyle=col.steel;x.fillRect(412,344,22,10);x.fillRect(468,344,64,10);
+ txt(x,"air",442,wy-8,col.ink,12);
+ /* delivery flap (hinge 434,349) */
+ const th=s.dOpen*1.05;x.strokeStyle=col.ink;x.lineWidth=5;x.lineCap="round";x.beginPath();x.moveTo(434,348);x.lineTo(434+36*Math.cos(th),348-36*Math.sin(th));x.stroke();
+ /* waste flap (hinge 385,413) */
+ const ta=(1-s.a)*1.2;x.beginPath();x.moveTo(385,413);x.lineTo(385+46*Math.cos(ta),413+46*Math.sin(ta));x.strokeStyle=col.accent;x.stroke();
+ x.fillStyle=col.steel;x.fillRect(335,408,50,8);x.fillRect(431,408,54,8);
+ /* waste jet */
+ const q=s.Qw;if(q>2e-5){const a=Math.min(1,q/8e-4);x.strokeStyle="rgba(130,200,240,"+(0.35+0.5*a)+")";x.lineWidth=4+8*a;x.setLineDash([5,9]);x.lineDashOffset=-s.ph3;x.beginPath();x.moveTo(408,420);x.quadraticCurveTo(414,455+30*a,455,478);x.stroke();x.setLineDash([])}
+ x.lineCap="butt";
+ /* labels */
+ txt(x,"Source tank",36,32);txt(x,"Drive pipe",120,300);txt(x,"H = "+P.H.toFixed(1)+" m",40,260,col.ink);
+ txt(x,"Waste flap",348,452,col.accent);txt(x,"(impulse valve)",348,468,col.mute,11);
+ txt(x,"Delivery check flap",470,336,col.ink,12);txt(x,"Air chamber",420,104);
+ txt(x,"Delivery pipe",548,248);txt(x,"Delivery tank",636,22);
+ x.strokeStyle=col.mute;x.lineWidth=1.5;x.setLineDash([4,4]);x.beginPath();x.moveTo(752,258);x.lineTo(752,52);x.stroke();x.setLineDash([]);
+ txt(x,"Z = "+P.Z+" m",744,160,col.ink,13,"right");
+ x.restore();
+}
+function axisFrame(x,w,h,pl,pb){x.clearRect(0,0,w,h);x.strokeStyle=col.line;x.lineWidth=1;x.strokeRect(pl+.5,6.5,w-pl-8,h-pb-6)}
+function shade(x,w,h,pl,pb,t0){
+ x.fillStyle="rgba(214,69,61,.12)";const pw=w-pl-8,n=H.t.length;
+ for(let i=0;i<n;i++)if(H.a[i]>0.5){const px=pl+(H.t[i]-t0)/WIN*pw;x.fillRect(px,7,pw/WIN*0.002+1,h-pb-7)}
+}
+function drawPress(){
+ const {x,w,h}=cvs.c1,pl=34,pb=18,pw=w-pl-8,ph=h-pb-12,n=H.t.length;axisFrame(x,w,h,pl,pb);
+ const t1=Math.max(s.t,WIN),t0=t1-WIN;shade(x,w,h,pl,pb,t0);
+ let mx=30;for(let i=0;i<n;i++)if(H.pk[i]>mx)mx=H.pk[i];mx=Math.min(mx*1.05,400);
+ const f=y=>Math.sign(y)*Math.sqrt(Math.abs(y)),lo=f(-1.5),hi=f(mx);
+ const Y=y=>6+ph*(1-(f(y)-lo)/(hi-lo)),X=t=>pl+(t-t0)/WIN*pw;
+ x.font="10px system-ui";x.textAlign="right";
+ [0,2,10,30,100,300].filter(v=>v<=mx).forEach(v=>{x.fillStyle=col.mute;x.fillText(v,pl-4,Y(v)+3);x.strokeStyle=col.line;x.beginPath();x.moveTo(pl,Y(v));x.lineTo(w-8,Y(v));x.stroke()});
+ x.setLineDash([5,4]);x.strokeStyle=col.mute;x.beginPath();x.moveTo(pl,Y(P.Z));x.lineTo(w-8,Y(P.Z));x.stroke();x.setLineDash([]);
+ txt(x,"lift Z",pl+4,Y(P.Z)-3,col.mute,10);
+ const ln=(arr,c,wd)=>{x.beginPath();for(let i=0;i<n;i++){const px=X(H.t[i]),py=Y(arr[i]);i?x.lineTo(px,py):x.moveTo(px,py)}x.strokeStyle=c;x.lineWidth=wd;x.stroke()};
+ ln(H.ha,col.water,2);ln(H.pk,col.accent,1.6);
+ txt(x,"body pressure (peak)",pl+4,h-4,col.accent,10);txt(x,"air chamber",pl+130,h-4,col.water,10);
+}
+function drawVel(){
+ const {x,w,h}=cvs.c2,pl=34,pb=18,pw=w-pl-8,ph=h-pb-12,n=H.t.length;axisFrame(x,w,h,pl,pb);
+ const t1=Math.max(s.t,WIN),t0=t1-WIN;shade(x,w,h,pl,pb,t0);
+ const hi=Math.max(2.6,P.vt+0.8),lo=-0.8,Y=v=>6+ph*(1-(v-lo)/(hi-lo)),X=t=>pl+(t-t0)/WIN*pw;
+ x.font="10px system-ui";x.textAlign="right";
+ for(let v=-0.5;v<=hi;v+=0.5){x.fillStyle=col.mute;x.fillText(v.toFixed(1),pl-4,Y(v)+3);x.strokeStyle=col.line;x.beginPath();x.moveTo(pl,Y(v));x.lineTo(w-8,Y(v));x.stroke()}
+ x.setLineDash([5,4]);x.strokeStyle=col.accent;x.beginPath();x.moveTo(pl,Y(P.vt));x.lineTo(w-8,Y(P.vt));x.stroke();x.setLineDash([]);
+ txt(x,"flap slams shut here",pl+4,Y(P.vt)-3,col.accent,10);
+ x.beginPath();for(let i=0;i<n;i++){const px=X(H.t[i]),py=Y(H.v[i]);i?x.lineTo(px,py):x.moveTo(px,py)}x.strokeStyle=col.water;x.lineWidth=2;x.stroke();
+ txt(x,"velocity in m/s, red band = waste flap shut",pl+4,h-4,col.mute,10);
+}
+function drawEnergy(){
+ const {x,w,h}=cvs.c3,pl=40,pb=18,pw=w-pl-8,ph=h-pb-12,n=EH.t.length;axisFrame(x,w,h,pl,pb);
+ if(n<2)return;
+ let mx=0.01;for(const d of EH.d)mx=Math.max(mx,d[7]);mx*=1.05;
+ const T=EH.t[n-1],X=t=>pl+t/T*pw,Y=e=>6+ph*(1-e/mx);
+ x.font="10px system-ui";x.textAlign="right";
+ for(let i=0;i<=4;i++){const e=mx*i/4;x.fillStyle=col.mute;x.fillText(e.toFixed(e<10?1:0)+" J",pl-4,Y(e)+3);x.strokeStyle=col.line;x.beginPath();x.moveTo(pl,Y(e));x.lineTo(w-8,Y(e));x.stroke()}
+ const cum=EH.d.map(d=>{let a=0;return CATS.map((_,j)=>a+=d[j])});
+ for(let j=CATS.length-1;j>=0;j--){
+  x.beginPath();for(let i=0;i<n;i++)i?x.lineTo(X(EH.t[i]),Y(cum[i][j])):x.moveTo(X(EH.t[i]),Y(cum[i][j]));
+  for(let i=n-1;i>=0;i--)x.lineTo(X(EH.t[i]),Y(j?cum[i][j-1]:0));
+  x.closePath();x.fillStyle=CATS[j][2];x.fill();
+ }
+ x.strokeStyle=col.ink;x.lineWidth=1.5;x.beginPath();EH.d.forEach((d,i)=>{const px=X(EH.t[i]),py=Y(d[7]);i?x.lineTo(px,py):x.moveTo(px,py)});x.stroke();
+ txt(x,"energy drawn from supply",pl+6,18,col.ink,10);
+ x.textAlign="right";txt(x,T.toFixed(1)+" s",w-10,h-4,col.mute,10,"right");
+}
+function buildUI(){
+ $("leg").innerHTML=CATS.map(c=>`<span><i style="background:${c[2]}"></i>${c[1]}</span>`).join("");
+ $("bars").innerHTML=CATS.map((c,i)=>`<div class="row"><span>${c[1]}</span><div class="bar"><i id="b${i}" style="background:${c[2]}"></i></div><em id="e${i}">0%</em></div>`).join("");
+}
+function updUI(){
+ $("cV").textContent=s.v.toFixed(2);$("cP").textContent=Math.max(0,H.pk.length?Math.max(...H.pk.slice(-60)):0).toFixed(0);
+ const tm=Math.max(s.t,0.01)/60;$("cS").textContent=s.t>1?(s.strokes/tm).toFixed(0):"–";
+ $("cD").textContent=(s.Vout*1000/tm).toFixed(2);$("cW").textContent=(s.Vw*1000/tm).toFixed(1);
+ const v=vals(),tot=Math.max(v[7],1e-9);$("cE").textContent=(v[0]/tot*100).toFixed(0)+"%";
+ CATS.forEach((c,i)=>{const pc=Math.min(100,v[i]/tot*100);$("b"+i).style.width=pc+"%";$("e"+i).textContent=pc.toFixed(0)+"%"});
+}
+/* ---------- controls ---------- */
+function labels(){$("oH").textContent=P.H.toFixed(1)+" m";$("oT").textContent=P.vt.toFixed(2)+" m/s";$("oZ").textContent=P.Z+" m";$("oA").textContent=(P.Va0*1000).toFixed(1)+" L"}
+$("iH").oninput=e=>{P.H=+e.target.value;labels()};
+$("iT").oninput=e=>{P.vt=+e.target.value;labels()};
+$("iZ").onchange=e=>{P.Z=+e.target.value;reset()};$("iZ").oninput=e=>{P.Z=+e.target.value;labels()};
+$("iA").onchange=e=>{P.Va0=+e.target.value/1000;reset()};$("iA").oninput=e=>{P.Va0=+e.target.value/1000;labels()};
+$("bP").onclick=e=>{run=!run;e.target.textContent=run?"Pause":"Resume"};
+$("bR").onclick=reset;
+document.querySelectorAll(".sp").forEach(b=>b.onclick=()=>{speed=+b.dataset.s;document.querySelectorAll(".sp").forEach(o=>o.classList.toggle("on",o===b))});
+function resize(){["sch","c1","c2","c3"].forEach(setup)}
+window.addEventListener("resize",resize);
+matchMedia("(prefers-color-scheme:dark)").addEventListener("change",readCol);
+/* ---------- loop ---------- */
+let last=performance.now(),fc=0;
+function frame(now){
+ const dtw=Math.min(0.05,(now-last)/1000);last=now;
+ if(run){const n=Math.min(3000,Math.round(dtw*speed/DT));for(let i=0;i<n;i++)step();
+  s.ph1+=s.v*dtw*speed*300;s.ph2+=s.vd*dtw*speed*500;s.ph3+=Math.min(1,s.Qw/5e-4)*dtw*speed*600+0.3}
+ if(fc++%30==0)readCol();
+ drawSch();drawPress();drawVel();drawEnergy();if(fc%4==0)updUI();
+ requestAnimationFrame(frame);
+}
+reset();labels();buildUI();readCol();resize();requestAnimationFrame(frame);
+</script>
+</body>
+</html>
