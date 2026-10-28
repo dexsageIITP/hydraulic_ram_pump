@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Hydraulic Ram Pump Simulation</title>
+<title>Hydraulic ram pump simulation</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;600;700&display=swap" rel="stylesheet">
 <style>
@@ -59,9 +59,9 @@ button.on{background:var(--water);color:#fff;border-color:var(--water)}
 </style>
 </head>
 <body>
-<h1>Hydraulic Ram Pump</h1>
-<p class="sub">Live Physics: drive-pipe inertia, water hammer, flap valves, air chamber and where every joule goes.</p>
-<nav class="jump"><a href="#live">Live Pump Model</a><a href="#cfd">CFD Flow Field</a></nav>
+<h1>Hydraulic ram pump</h1>
+<p class="sub">Live physics: drive-pipe inertia, water hammer, flap valves, air chamber and where every joule goes.</p>
+<nav class="jump"><a href="#live">Live pump model</a><a href="#cfd">CFD flow field</a></nav>
 <span id="live"></span>
 
 <div class="card"><canvas id="sch"></canvas></div>
@@ -145,7 +145,7 @@ function step(){
  s.v+=dt*g*(P.H-s.p-hf)/L;
  if(s.mode==="open"&&s.v>P.vt)s.mode="closing";
  if(s.mode==="closing"){s.a+=dt/TC;if(s.a>=1){s.a=1;s.mode="closed";s.tc=0;s.strokes++}}
- else if(s.mode==="closed"){s.tc+=dt;if(s.tc>0.03&&s.p<0.5)s.mode="opening"}
+ else if(s.mode==="closed"){s.tc+=dt;if(s.tc>0.03&&s.p<P.H*0.9)s.mode="opening"}
  else if(s.mode==="opening"){s.a-=dt/TO;if(s.a<=0){s.a=0;s.mode="open"}}
  const Qin=A*s.v,of=1-s.a;
  let lo=PMIN,hi=5000,pp;
