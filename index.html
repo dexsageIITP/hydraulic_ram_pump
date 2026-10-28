@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Hydraulic Ram Pump Simulation</title>
+<title>Hydraulic ram pump simulation</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;600;700&display=swap" rel="stylesheet">
 <style>
@@ -42,11 +42,27 @@ button.on{background:var(--water);color:#fff;border-color:var(--water)}
 .row em{font-style:normal;text-align:right;font-variant-numeric:tabular-nums}
 @media(max-width:520px){.row{grid-template-columns:96px 1fr 44px}}
 .note{font-size:.76rem;color:var(--mute);margin-top:6px}
+.jump{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 10px}
+.jump a{font-size:.82rem;color:var(--ink);text-decoration:none;border:1px solid var(--line);background:var(--card);border-radius:999px;padding:6px 12px}
+.jump a:hover{border-color:var(--water)}
+.vwrap{position:relative;border-radius:8px;overflow:hidden;background:#000;aspect-ratio:1190/640}
+.vwrap video{width:100%;height:100%;display:block;object-fit:contain}
+.badge{position:absolute;left:8px;bottom:8px;background:rgba(0,0,0,.6);color:#fff;font-size:.72rem;padding:3px 8px;border-radius:6px;pointer-events:none}
+@media(max-width:520px){.badge{display:none}}
+.vbar{display:flex;align-items:center;gap:8px;margin-top:8px;flex-wrap:wrap}
+.vbar input[type=range]{flex:1;min-width:140px}
+.vbar .tm{font-size:.78rem;color:var(--mute);font-variant-numeric:tabular-nums;min-width:84px;text-align:right}
+.cfdgrid{display:grid;gap:8px;grid-template-columns:1fr;margin-top:10px}
+@media(min-width:700px){.cfdgrid{grid-template-columns:1fr 1fr}}
+.cfdgrid div{background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:8px 10px;font-size:.8rem;color:var(--mute)}
+.cfdgrid b{color:var(--ink);display:block;font-size:.84rem;margin-bottom:2px}
 </style>
 </head>
 <body>
-<h1>Hydraulic Ram Pump</h1>
+<h1>Hydraulic ram pump</h1>
 <p class="sub">Live physics: drive-pipe inertia, water hammer, flap valves, air chamber and where every joule goes.</p>
+<nav class="jump"><a href="#live">Live pump model</a><a href="#cfd">CFD flow field</a></nav>
+<span id="live"></span>
 
 <div class="card"><canvas id="sch"></canvas></div>
 
@@ -79,6 +95,28 @@ button.on{background:var(--water);color:#fff;border-color:var(--water)}
 <div class="card"><h2>Energy: cumulative, from the supply to the outcomes</h2><canvas class="ch" id="c3" style="height:220px"></canvas><div class="leg" id="leg"></div></div>
 <div class="card"><h2>Share of input energy</h2><div id="bars"></div>
 <div class="note">Efficiency is useful lift energy divided by energy drawn from the supply tank. Real ram pumps typically land between 30 and 70 percent depending on tuning.</div></div>
+
+<div class="card" id="cfd">
+<h2>CFD flow field</h2>
+<p class="sub" style="margin-bottom:8px">Velocity contours through the pump body, the two flap valves and the air chamber. The video loops while it is on screen.</p>
+<div class="vwrap">
+<video id="cfdv" src="cfd_simulation.mp4" poster="cfd_poster.jpg" muted loop playsinline preload="metadata" aria-label="CFD velocity contour animation of the hydraulic ram pump"></video>
+<span class="badge">Velocity magnitude, 0 – 2.8 m/s · 2D</span>
+</div>
+<div class="vbar">
+<button id="vP" class="on">Pause</button>
+<input id="vS" type="range" min="0" max="1000" value="0" aria-label="Seek CFD animation">
+<span class="tm" id="vT">0.0 / 0.0 s</span>
+</div>
+<div class="btns" style="margin-top:6px">
+<button class="vsp" data-s="0.25">0.25×</button><button class="vsp" data-s="0.5">0.5×</button><button class="vsp on" data-s="1">1×</button>
+</div>
+<div class="cfdgrid">
+<div><b>What the CFD shows</b>Fast flow (green to red) squeezes past each flap while the drive pipe carries a steady blue-cyan stream. The tall chamber stays slow, which is the cushion that smooths delivery.</div>
+<div><b>How it relates to the live model</b>The CFD resolves the 2D flow field around the valves. The live model above is a lumped, reduced-order version that runs the whole cycle with energy accounting. They are not time-synchronised.</div>
+</div>
+<div class="note">Contour scale and 0.1 m scale bar are from the original CFD render. Colour legend is inside the video.</div>
+</div>
 
 <script>
 const g=9.81,RG=9810,A=5e-4,L=10,Ap=1.27e-4,Ld=30,VT=0.003,C=1.4e-8,KF=0.6,KFD=3.6,EPS=0.02,PMIN=-1,TC=0.015,TO=0.04,DT=1e-4,WIN=2.5;
@@ -263,6 +301,25 @@ function frame(now){
  requestAnimationFrame(frame);
 }
 reset();labels();buildUI();readCol();resize();requestAnimationFrame(frame);
+
+/* ---------- CFD video ---------- */
+(function(){
+ const v=$("cfdv"),pb=$("vP"),sk=$("vS"),tm=$("vT");
+ let userPaused=false,seeking=false;
+ const fmt=t=>(isFinite(t)?t:0).toFixed(1);
+ const upd=()=>{if(!seeking&&v.duration)sk.value=Math.round(v.currentTime/v.duration*1000);tm.textContent=fmt(v.currentTime)+" / "+fmt(v.duration)+" s"};
+ const play=()=>{const p=v.play();if(p&&p.catch)p.catch(()=>{});};
+ v.addEventListener("timeupdate",upd);v.addEventListener("loadedmetadata",upd);
+ v.addEventListener("play",()=>{pb.textContent="Pause";pb.classList.add("on")});
+ v.addEventListener("pause",()=>{pb.textContent="Play";pb.classList.remove("on")});
+ pb.onclick=()=>{if(v.paused){userPaused=false;play()}else{userPaused=true;v.pause()}};
+ sk.addEventListener("input",()=>{seeking=true;if(v.duration)v.currentTime=sk.value/1000*v.duration});
+ sk.addEventListener("change",()=>{seeking=false});
+ document.querySelectorAll(".vsp").forEach(b=>b.onclick=()=>{v.playbackRate=+b.dataset.s;document.querySelectorAll(".vsp").forEach(o=>o.classList.toggle("on",o===b))});
+ if("IntersectionObserver" in window){
+  new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting){if(!userPaused)play()}else v.pause()}),{threshold:.35}).observe(v);
+ }
+})();
 </script>
 </body>
 </html>
