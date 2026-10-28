@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Hydraulic ram pump simulation</title>
+<title>Hydraulic Ram Pump Simulation</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;600;700&display=swap" rel="stylesheet">
 <style>
@@ -59,28 +59,28 @@ button.on{background:var(--water);color:#fff;border-color:var(--water)}
 </style>
 </head>
 <body>
-<h1>Hydraulic ram pump</h1>
+<h1>Hydraulic Ram Pump</h1>
 <p class="sub">Live physics: drive-pipe inertia, water hammer, flap valves, air chamber and where every joule goes.</p>
-<nav class="jump"><a href="#live">Live pump model</a><a href="#cfd">CFD flow field</a></nav>
+<nav class="jump"><a href="#live">Live Pump Model</a><a href="#cfd">CFD Flow Field</a></nav>
 <span id="live"></span>
 
 <div class="card"><canvas id="sch"></canvas></div>
 
 <div class="chips">
-<div class="chip"><b id="cV">0</b><span>drive flow m/s</span></div>
-<div class="chip"><b id="cP">0</b><span>body head m (peak)</span></div>
-<div class="chip"><b id="cS">0</b><span>strokes/min</span></div>
-<div class="chip"><b id="cD">0</b><span>delivered L/min</span></div>
-<div class="chip"><b id="cW">0</b><span>wasted L/min</span></div>
-<div class="chip"><b id="cE">0%</b><span>efficiency</span></div>
+<div class="chip"><b id="cV">0</b><span>Drive Flow m/s</span></div>
+<div class="chip"><b id="cP">0</b><span>Body Head m (Peak)</span></div>
+<div class="chip"><b id="cS">0</b><span>Strokes/min</span></div>
+<div class="chip"><b id="cD">0</b><span>Delivered L/min</span></div>
+<div class="chip"><b id="cW">0</b><span>Wasted L/min</span></div>
+<div class="chip"><b id="cE">0%</b><span>Efficiency</span></div>
 </div>
 
 <div class="card">
 <div class="ctl">
-<div><label>Supply head H <output id="oH"></output></label><input id="iH" type="range" min="1" max="6" step="0.1" value="3"></div>
-<div><label>Waste flap trip speed <output id="oT"></output></label><input id="iT" type="range" min="0.8" max="2.2" step="0.05" value="1.5"></div>
-<div><label>Delivery lift Z <output id="oZ"></output></label><input id="iZ" type="range" min="5" max="30" step="1" value="12"></div>
-<div><label>Air chamber gas volume <output id="oA"></output></label><input id="iA" type="range" min="0.3" max="2.4" step="0.1" value="1.5"></div>
+<div><label>Supply Head H <output id="oH"></output></label><input id="iH" type="range" min="1" max="6" step="0.1" value="3"></div>
+<div><label>Waste Flap Trip Speed <output id="oT"></output></label><input id="iT" type="range" min="0.8" max="2.2" step="0.05" value="1.5"></div>
+<div><label>Delivery Lift Z <output id="oZ"></output></label><input id="iZ" type="range" min="5" max="30" step="1" value="8"></div>
+<div><label>Air Chamber Gas Volume <output id="oA"></output></label><input id="iA" type="range" min="0.3" max="2.4" step="0.1" value="1.5"></div>
 </div>
 <div class="btns">
 <button id="bP">Pause</button><button id="bR">Reset</button>
@@ -89,15 +89,15 @@ button.on{background:var(--water);color:#fff;border-color:var(--water)}
 <div class="note">Lift and air-chamber sliders restart the pump. Shaded bands in the graphs mark when the waste flap is shut.</div>
 </div>
 
-<div class="card"><h2>Pressure in the pump body</h2><canvas class="ch" id="c1"></canvas>
+<div class="card"><h2>Pressure in the Pump Body</h2><canvas class="ch" id="c1"></canvas>
 <div class="note">Square-root scale so the hammer spike and the delivery pressure both stay readable.</div></div>
-<div class="card"><h2>Drive-pipe velocity</h2><canvas class="ch" id="c2"></canvas></div>
-<div class="card"><h2>Energy: cumulative, from the supply to the outcomes</h2><canvas class="ch" id="c3" style="height:220px"></canvas><div class="leg" id="leg"></div></div>
-<div class="card"><h2>Share of input energy</h2><div id="bars"></div>
+<div class="card"><h2>Drive-Pipe Velocity</h2><canvas class="ch" id="c2"></canvas></div>
+<div class="card"><h2>Energy: Cumulative, From the Supply to the Outcomes</h2><canvas class="ch" id="c3" style="height:220px"></canvas><div class="leg" id="leg"></div></div>
+<div class="card"><h2>Share of Input Energy</h2><div id="bars"></div>
 <div class="note">Efficiency is useful lift energy divided by energy drawn from the supply tank. Real ram pumps typically land between 30 and 70 percent depending on tuning.</div></div>
 
 <div class="card" id="cfd">
-<h2>CFD flow field</h2>
+<h2>CFD Flow Field</h2>
 <p class="sub" style="margin-bottom:8px">Velocity contours through the pump body, the two flap valves and the air chamber. The video loops while it is on screen.</p>
 <div class="vwrap">
 <video id="cfdv" src="cfd_simulation.mp4" poster="cfd_poster.jpg" muted loop playsinline preload="metadata" aria-label="CFD velocity contour animation of the hydraulic ram pump"></video>
@@ -112,8 +112,8 @@ button.on{background:var(--water);color:#fff;border-color:var(--water)}
 <button class="vsp" data-s="0.25">0.25×</button><button class="vsp" data-s="0.5">0.5×</button><button class="vsp on" data-s="1">1×</button>
 </div>
 <div class="cfdgrid">
-<div><b>What the CFD shows</b>Fast flow (green to red) squeezes past each flap while the drive pipe carries a steady blue-cyan stream. The tall chamber stays slow, which is the cushion that smooths delivery.</div>
-<div><b>How it relates to the live model</b>The CFD resolves the 2D flow field around the valves. The live model above is a lumped, reduced-order version that runs the whole cycle with energy accounting. They are not time-synchronised.</div>
+<div><b>What the CFD Shows</b>Fast flow (green to red) squeezes past each flap while the drive pipe carries a steady blue-cyan stream. The tall chamber stays slow, which is the cushion that smooths delivery.</div>
+<div><b>How It Relates to the Live Model</b>The CFD resolves the 2D flow field around the valves. The live model above is a lumped, reduced-order version that runs the whole cycle with energy accounting. They are not time-synchronised.</div>
 </div>
 <div class="note">Contour scale and 0.1 m scale bar are from the original CFD render. Colour legend is inside the video.</div>
 </div>
@@ -121,8 +121,8 @@ button.on{background:var(--water);color:#fff;border-color:var(--water)}
 <script>
 const g=9.81,RG=9810,A=5e-4,L=10,Ap=1.27e-4,Ld=30,VT=0.003,C=1.4e-8,KF=0.6,KFD=3.6,EPS=0.02,PMIN=-1,TC=0.015,TO=0.04,DT=1e-4,WIN=2.5;
 const S2G=Math.sqrt(2*g),KW=0.9*A*S2G,KD=0.6*A*S2G;
-const P={H:3,Z:12,vt:1.5,Va0:1.5e-3};
-const CATS=[["use","Useful lift to tank","#2e9d5b"],["waste","Dumped out of waste valve","#d6453d"],["df","Drive-pipe friction","#e68a2e"],["dv","Delivery-valve throttling","#e0c13a"],["dp","Delivery-pipe friction","#a68a64"],["res","Ringing and cavitation","#8a8f98"],["sto","Still stored (motion, squeeze, air)","#3b7dd8"]];
+const P={H:3,Z:8,vt:1.5,Va0:1.5e-3};
+const CATS=[["use","Useful Lift to Tank","#2e9d5b"],["waste","Dumped Out of Waste Valve","#d6453d"],["df","Drive-Pipe Friction","#e68a2e"],["dv","Delivery-Valve Throttling","#e0c13a"],["dp","Delivery-Pipe Friction","#a68a64"],["res","Ringing and Cavitation","#8a8f98"],["sto","Still Stored (Motion, Squeeze, Air)","#3b7dd8"]];
 let s,E,H,EH,estep,run=true,speed=0.2;
 
 function reset(){
@@ -202,7 +202,7 @@ function drawSch(){
  x.fillStyle=col.water;x.fillRect(418,wy,109,346-wy);
  x.strokeStyle=col.pipe;x.lineWidth=5;x.strokeRect(415,114,115,232);
  x.fillStyle=col.steel;x.fillRect(412,344,22,10);x.fillRect(468,344,64,10);
- txt(x,"air",442,wy-8,col.ink,12);
+ txt(x,"Air",442,wy-8,col.ink,12);
  /* delivery flap (hinge 434,349) */
  const th=s.dOpen*1.05;x.strokeStyle=col.ink;x.lineWidth=5;x.lineCap="round";x.beginPath();x.moveTo(434,348);x.lineTo(434+36*Math.cos(th),348-36*Math.sin(th));x.stroke();
  /* waste flap (hinge 385,413) */
@@ -212,10 +212,10 @@ function drawSch(){
  const q=s.Qw;if(q>2e-5){const a=Math.min(1,q/8e-4);x.strokeStyle="rgba(130,200,240,"+(0.35+0.5*a)+")";x.lineWidth=4+8*a;x.setLineDash([5,9]);x.lineDashOffset=-s.ph3;x.beginPath();x.moveTo(408,420);x.quadraticCurveTo(414,455+30*a,455,478);x.stroke();x.setLineDash([])}
  x.lineCap="butt";
  /* labels */
- txt(x,"Source tank",36,32);txt(x,"Drive pipe",120,300);txt(x,"H = "+P.H.toFixed(1)+" m",40,260,col.ink);
- txt(x,"Waste flap",348,452,col.accent);txt(x,"(impulse valve)",348,468,col.mute,11);
- txt(x,"Delivery check flap",470,336,col.ink,12);txt(x,"Air chamber",420,104);
- txt(x,"Delivery pipe",548,248);txt(x,"Delivery tank",636,22);
+ txt(x,"Source Tank",36,32);txt(x,"Drive Pipe",120,300);txt(x,"H = "+P.H.toFixed(1)+" m",40,260,col.ink);
+ txt(x,"Waste Flap",348,452,col.accent);txt(x,"(Impulse Valve)",348,468,col.mute,11);
+ txt(x,"Delivery Check Flap",470,336,col.ink,12);txt(x,"Air Chamber",420,104);
+ txt(x,"Delivery Pipe",548,248);txt(x,"Delivery Tank",636,22);
  x.strokeStyle=col.mute;x.lineWidth=1.5;x.setLineDash([4,4]);x.beginPath();x.moveTo(752,258);x.lineTo(752,52);x.stroke();x.setLineDash([]);
  txt(x,"Z = "+P.Z+" m",744,160,col.ink,13,"right");
  x.restore();
@@ -237,7 +237,7 @@ function drawPress(){
  txt(x,"lift Z",pl+4,Y(P.Z)-3,col.mute,10);
  const ln=(arr,c,wd)=>{x.beginPath();for(let i=0;i<n;i++){const px=X(H.t[i]),py=Y(arr[i]);i?x.lineTo(px,py):x.moveTo(px,py)}x.strokeStyle=c;x.lineWidth=wd;x.stroke()};
  ln(H.ha,col.water,2);ln(H.pk,col.accent,1.6);
- txt(x,"body pressure (peak)",pl+4,h-4,col.accent,10);txt(x,"air chamber",pl+130,h-4,col.water,10);
+ txt(x,"Body Pressure (Peak)",pl+4,h-4,col.accent,10);txt(x,"Air Chamber",pl+130,h-4,col.water,10);
 }
 function drawVel(){
  const {x,w,h}=cvs.c2,pl=34,pb=18,pw=w-pl-8,ph=h-pb-12,n=H.t.length;axisFrame(x,w,h,pl,pb);
@@ -264,7 +264,7 @@ function drawEnergy(){
   x.closePath();x.fillStyle=CATS[j][2];x.fill();
  }
  x.strokeStyle=col.ink;x.lineWidth=1.5;x.beginPath();EH.d.forEach((d,i)=>{const px=X(EH.t[i]),py=Y(d[7]);i?x.lineTo(px,py):x.moveTo(px,py)});x.stroke();
- txt(x,"energy drawn from supply",pl+6,18,col.ink,10);
+ txt(x,"Energy Drawn From Supply",pl+6,18,col.ink,10);
  x.textAlign="right";txt(x,T.toFixed(1)+" s",w-10,h-4,col.mute,10,"right");
 }
 function buildUI(){
